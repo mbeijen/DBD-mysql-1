@@ -3268,6 +3268,10 @@ my_ulonglong mysql_st_internal_execute(
           (!mysql_db_reconnect(h)  ||
            (mysql_real_query(svsock, sbuf, slen))))
       {
+        if (mysql_errno(svsock))
+          do_error(h, mysql_errno(svsock), mysql_error(svsock)
+                    ,mysql_sqlstate(svsock));
+
         rows = -2;
       } else {
           /** Store the result from the Query */
@@ -4832,6 +4836,7 @@ int mysql_db_reconnect(SV* h)
   dTHX;
   D_imp_xxh(h);
   imp_dbh_t* imp_dbh;
+  unsigned int last_errno;
   MYSQL save_socket;
 
   if (DBIc_TYPE(imp_xxh) == DBIt_ST)
@@ -4842,7 +4847,8 @@ int mysql_db_reconnect(SV* h)
   else
     imp_dbh= (imp_dbh_t*) imp_xxh;
 
-  if (mysql_errno(imp_dbh->pmysql) != CR_SERVER_GONE_ERROR)
+  last_errno = mysql_errno(imp_dbh->pmysql);
+  if (last_errno != CR_SERVER_GONE_ERROR && last_errno != CR_SERVER_LOST)
     /* Other error */
     return FALSE;
 
